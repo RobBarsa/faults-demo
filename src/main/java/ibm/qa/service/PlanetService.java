@@ -1,8 +1,14 @@
 package ibm.qa.service;
 
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Fallback;
+import org.eclipse.microprofile.faulttolerance.Retry;
+import org.eclipse.microprofile.faulttolerance.Timeout;
 
 import com.github.javafaker.Faker;
 
@@ -33,7 +39,10 @@ public class PlanetService {
         }
     }
 
+    @Fallback(fallbackMethod = "getPlanetsOfSun", applyOn = IllegalArgumentException.class)
     public List<Planet> planets() {
+        // if (true)
+        // throw new IllegalArgumentException("Why not");
         if (randomFailureOccured()) {
             throw new RandomException();
         }
@@ -45,9 +54,14 @@ public class PlanetService {
     }
 
     public List<Planet> getPlanetsOfSun() {
+        // if (true)
+        // throw new IllegalArgumentException("Why not");
         return this.planetsOfSun;
     }
 
+    @Timeout(10000)
+    @Retry(retryOn = RandomException.class, maxRetries = 5, delay = 2, abortOn = AstrometryException.class)
+    @CircuitBreaker(requestVolumeThreshold = 5, failureRatio = 0.2, successThreshold = 2, delay = 5, delayUnit = ChronoUnit.SECONDS, failOn = RandomException.class)
     public List<Planet> findPlanet(Double distance) {
         List<Planet> result;
         long start = System.currentTimeMillis();
